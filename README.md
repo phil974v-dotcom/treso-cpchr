@@ -33,18 +33,15 @@ Rafraîchissez la page : vous avez maintenant l'accès complet.
 
 ### 4. Publier le code sur GitHub
 
-Depuis un terminal, dans ce dossier :
+Ce dossier contient déjà un dépôt git avec un premier commit. Créez d'abord un dépôt vide sur GitHub (bouton « New repository », sans README ni .gitignore), puis depuis un terminal, dans ce dossier :
 
 ```bash
-git init
-git add .
-git commit -m "Version initiale"
-git branch -M main
 git remote add origin https://github.com/VOTRE-COMPTE/treso-cpchr.git
+git branch -M main
 git push -u origin main
 ```
 
-(Créez d'abord le dépôt vide sur GitHub via le bouton « New repository ».)
+Si `git status` indique que le dépôt n'est pas initialisé (selon comment vous avez récupéré ce dossier), lancez d'abord `git init && git add . && git commit -m "Version initiale"`.
 
 ### 5. Mettre le site en ligne
 

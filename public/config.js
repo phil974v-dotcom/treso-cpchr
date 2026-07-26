@@ -3,5 +3,5 @@
 // Ces deux valeurs ne sont pas secrètes (elles sont protégées par les règles
 // de sécurité RLS définies dans sql/schema.sql) : elles peuvent rester dans
 // le code envoyé au navigateur.
-window.SUPABASE_URL = "https://VOTRE-PROJET.supabase.co";
-window.SUPABASE_ANON_KEY = "VOTRE_CLE_ANON_PUBLIQUE";
+window.SUPABASE_URL = "https://thqydxlyhpyscqclmyns.supabase.co";
+window.SUPABASE_ANON_KEY = "sb_publishable_C0bCJdeHgp58S9MLS1wFgg_LFAjS6VM";
