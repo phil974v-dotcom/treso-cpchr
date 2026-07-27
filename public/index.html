@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -83,3 +83,353 @@
   .modal h3{margin-top:0; font-size:16px;}
   .field{margin-bottom:12px;}
   .field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:4px;}
+  .field input, .field select, .field textarea{width:100%;}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
+  .small{font-size:12px; color:var(--muted);}
+  .bar{height:7px; background:#eceef1; border-radius:6px; overflow:hidden; margin-top:5px;}
+  .bar > div{height:100%; background:var(--accent);}
+  .bar.warn > div{background:var(--red);}
+  .bar.over > div{background:var(--blue);}
+  footer{text-align:center; padding:30px 10px; color:var(--muted); font-size:12px;}
+  .actions-col{white-space:nowrap;}
+  .icon-btn{background:none; border:none; cursor:pointer; color:var(--muted); font-size:13px; padding:2px 6px;}
+  .icon-btn:hover{color:var(--ink);}
+  .empty{padding:30px; text-align:center; color:var(--muted); font-size:13.5px;}
+  .mini-row{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f0f1f3;}
+  .mini-row:last-child{border-bottom:none;}
+  .mini-row input[type=text], .mini-row input[type=number]{flex:1;}
+  .month-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-top:8px;}
+  .month-cell{border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:12.5px;}
+  .month-cell.valide{background:var(--accent-light); border-color:#cfe6d9;}
+  .month-cell .m-label{font-weight:600; margin-bottom:4px;}
+  .close-x{position:absolute; top:14px; right:16px; cursor:pointer; color:var(--muted); font-size:18px; background:none; border:none;}
+  .pill-toggle{display:inline-flex; border:1px solid var(--line); border-radius:20px; overflow:hidden;}
+  .pill-toggle button{border:none; background:#fff; padding:6px 12px; font-size:12.5px; cursor:pointer; color:var(--muted);}
+  .pill-toggle button.active{background:var(--accent); color:#fff;}
+  .checkbox-cell{text-align:center;}
+  #login-screen{max-width:400px; margin:80px auto;}
+  #exercice-select{padding:6px 10px; border-radius:7px; border:1px solid #3a4356; background:#2b3444; color:#fff; font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="panel">
+  <h2 style="margin-top:0">💠 Trésorerie CPCHR</h2>
+  <p class="small">Connexion par lien magique (aucun mot de passe à retenir). Entrez votre email, vous recevrez un lien de connexion.</p>
+  <div class="toolbar">
+    <input type="email" id="login-email" placeholder="votre@email.com" style="flex:1">
+    <button class="btn" id="btn-login">Envoyer le lien</button>
+  </div>
+  <div id="login-msg" class="small"></div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+
+<header>
+  <div>
+    <h1>💠 Trésorerie CPCHR</h1>
+    <div class="sub" id="solde-header"></div>
+  </div>
+  <div style="text-align:right; display:flex; align-items:center; gap:14px">
+    <div>
+      <label class="sub" style="display:block; margin-bottom:3px">Exercice</label>
+      <select id="exercice-select"></select>
+    </div>
+    <span class="sub" id="user-info"></span>
+    <span class="role-badge" id="role-badge"></span>
+    <button class="btn secondary" id="btn-logout">Se déconnecter</button>
+  </div>
+</header>
+
+<nav id="nav">
+  <button data-view="dashboard" class="active">Tableau de bord</button>
+  <button data-view="operations">Opérations</button>
+  <button data-view="membres">Adhérents &amp; cotisations</button>
+  <button data-view="releves">Relevés / Pointage</button>
+  <button data-view="parametres">Paramètres</button>
+  <button data-view="data">Exports</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="cards">
+      <div class="card"><div class="label">Solde Compte Courant</div><div class="value" id="kpi-solde-courant">–</div></div>
+      <div class="card"><div class="label">Solde Compte Hospitalier</div><div class="value" id="kpi-solde-hosp">–</div></div>
+      <div class="card"><div class="label">Solde Épargne</div><div class="value" id="kpi-solde-epargne">–</div></div>
+      <div class="card"><div class="label">Total dû restant (adhérents)</div><div class="value" id="kpi-restant">–</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>Recettes / dépenses par catégorie</h2>
+        <canvas id="chart-cat" height="220"></canvas>
+      </div>
+      <div class="panel">
+        <h2>Situation cotisations exercice</h2>
+        <canvas id="chart-cotis" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Dernières opérations</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th>Compte</th><th style="text-align:right">Montant</th></tr></thead>
+        <tbody id="tbody-recent"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- OPERATIONS -->
+  <div class="view" id="view-operations">
+    <div class="panel">
+      <div class="toolbar">
+        <input type="text" class="search" id="op-search" placeholder="Rechercher un libellé...">
+        <select id="op-filter-cat"><option value="">Toutes catégories</option></select>
+        <select id="op-filter-compte"><option value="">Tous les comptes</option></select>
+        <select id="op-filter-membre"><option value="">Tous les adhérents</option></select>
+        <button class="btn" id="btn-new-op">+ Nouvelle opération</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Libellé</th><th>Catégorie</th><th>Compte</th><th>Adhérent</th>
+          <th style="text-align:right">Montant</th><th style="text-align:center">Pointée</th><th></th>
+        </tr></thead>
+        <tbody id="tbody-ops"></tbody>
+      </table>
+      <div class="empty" id="ops-empty" style="display:none">Aucune opération ne correspond à ce filtre.</div>
+    </div>
+  </div>
+
+  <!-- MEMBRES -->
+  <div class="view" id="view-membres">
+    <div class="panel">
+      <div class="toolbar">
+        <input type="text" class="search" id="mb-search" placeholder="Rechercher un adhérent...">
+        <button class="btn secondary" id="btn-export-word" disabled>⬇ Exporter la sélection en Word</button>
+        <button class="btn" id="btn-new-membre">+ Nouvel adhérent</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th class="checkbox-cell"><input type="checkbox" id="mb-select-all"></th>
+          <th>Adhérent</th><th>Statut</th><th>Cotisation appelée</th><th>Achats</th><th>Total dû</th><th>Versé</th><th>% réglé</th><th></th>
+        </tr></thead>
+        <tbody id="tbody-membres"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RELEVES -->
+  <div class="view" id="view-releves">
+    <div class="panel">
+      <h2>Pointage des relevés bancaires</h2>
+      <p class="small">Renseignez le solde de début et de fin de chaque relevé bancaire reçu ; le solde théorique est recalculé à partir des opérations pointées de la période. Cochez « Pointée » sur chaque opération (onglet Opérations) au fur et à mesure du rapprochement.</p>
+      <div class="toolbar">
+        <button class="btn" id="btn-new-releve">+ Nouveau relevé</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Compte</th><th>Période</th><th>Solde début</th><th>Solde fin (relevé)</th><th>Solde calculé</th><th>Écart</th><th></th>
+        </tr></thead>
+        <tbody id="tbody-releves"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PARAMETRES -->
+  <div class="view" id="view-parametres">
+    <div class="grid2">
+      <div class="panel">
+        <h2>Montants de cotisation</h2>
+        <div class="field">
+          <label>Cotisation annuelle — Permanent (adhérent, cotisant GODF) (€)</label>
+          <input type="number" step="0.01" id="param-cotis-permanent">
+        </div>
+        <div class="field">
+          <label>Cotisation annuelle — Affilié (non cotisant GODF) (€)</label>
+          <input type="number" step="0.01" id="param-cotis-affilie">
+        </div>
+        <button class="btn small" id="btn-save-params">Enregistrer</button>
+        <p class="small" style="margin-top:10px">Ces montants servent de base par défaut pour chaque adhérent selon son statut. Vous pouvez aussi forcer un montant spécifique sur la fiche d'un adhérent.</p>
+      </div>
+      <div class="panel">
+        <h2>Forfaits (achats)</h2>
+        <p class="small">Ces forfaits sont proposés lors de l'ajout d'un achat sur la fiche d'un adhérent (ex. droits de passage).</p>
+        <div id="forfaits-list"></div>
+        <div class="toolbar" style="margin-top:10px">
+          <input type="text" id="new-forfait-nom" placeholder="Nom du forfait" style="flex:1">
+          <input type="number" step="0.01" id="new-forfait-montant" placeholder="Montant €" style="width:110px">
+          <button class="btn small" id="btn-add-forfait">+ Ajouter</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Catégories / postes comptables</h2>
+      <p class="small">Liste utilisée pour catégoriser les opérations. Vous pouvez ajouter, renommer ou supprimer une catégorie.</p>
+      <div id="categories-list" style="max-height:340px; overflow:auto"></div>
+      <div class="toolbar" style="margin-top:10px">
+        <input type="text" id="new-cat-nom" placeholder="Nouvelle catégorie (ex : 3-3- Vente Tombola)" style="flex:1">
+        <button class="btn small" id="btn-add-cat">+ Ajouter</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Utilisateurs &amp; rôles</h2>
+      <p class="small">Chaque personne se connecte une première fois avec son email pour créer son profil (rôle « membre » par défaut). Changez ensuite son rôle ici. Pour un accès personnel, indiquez l'adhérent correspondant.</p>
+      <table>
+        <thead><tr><th>Email</th><th>Nom</th><th>Rôle</th><th>Adhérent lié</th></tr></thead>
+        <tbody id="tbody-profiles"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DATA / EXPORTS -->
+  <div class="view" id="view-data">
+    <div class="panel">
+      <h2>Clôture de l'exercice <span id="cloture-year-a"></span></h2>
+      <p class="small">À faire en début d'année suivante : cette action calcule automatiquement le solde reporté (report N-1) de chaque adhérent — y compris les trop-perçus — et le solde de départ de chaque compte, télécharge une sauvegarde complète de l'exercice <span id="cloture-year-b"></span> (opérations en CSV, récapitulatifs Excel des 3 comptes, situations Word de tous les adhérents), puis crée l'exercice <span id="cloture-year-c"></span> vierge avec ces reports. L'exercice <span id="cloture-year-d"></span> reste ensuite consultable via le sélecteur « Exercice » en haut de page.</p>
+      <button class="btn" id="btn-cloture-exercice"></button>
+    </div>
+    <div class="panel">
+      <h2>Récapitulatif Recettes / Dépenses</h2>
+      <p class="small">Génère un tableau Excel « Recettes / Dépenses » par catégorie, avec le solde de trésorerie de report et le solde de fin de période.</p>
+      <div class="toolbar">
+        <select id="recap-compte">
+          <option value="C.Courant">Compte Courant</option>
+          <option value="C.Hospit">Compte Hospitalier</option>
+          <option value="Epargne">Épargne</option>
+        </select>
+        <select id="recap-periode">
+          <option value="annee">Année complète</option>
+          <option value="intermediaire">Jusqu'à une date intermédiaire</option>
+        </select>
+        <input type="date" id="recap-date" style="display:none">
+        <button class="btn" id="btn-export-recap">⬇ Générer le récapitulatif Excel</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Export des opérations</h2>
+      <div class="toolbar">
+        <button class="btn secondary" id="btn-export-csv">⬇ Exporter les opérations en CSV</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>Données partagées et sécurisées par rôle — hébergées sur Supabase.</footer>
+
+</div><!-- #app -->
+
+<!-- Modal opération -->
+<div class="modal-bg" id="modal-op">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('modal-op')">✕</button>
+    <h3 id="modal-op-title">Nouvelle opération</h3>
+    <input type="hidden" id="op-id">
+    <input type="hidden" id="op-echeance-membre">
+    <input type="hidden" id="op-echeance-mois">
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="op-date"></div>
+      <div class="field"><label>Compte</label>
+        <select id="op-compte"><option value="C.Courant">Compte Courant</option><option value="C.Hospit">Compte Hospitalier</option><option value="Epargne">Épargne</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Libellé</label><input type="text" id="op-libelle" placeholder="Ex : Virement cotisation..."></div>
+    <div class="field"><label>Montant (négatif si dépense)</label><input type="number" step="0.01" id="op-montant"></div>
+    <div class="field"><label>Catégorie</label><select id="op-categorie"></select></div>
+    <div class="field"><label>Adhérent associé (optionnel)</label><select id="op-membre"><option value="">—</option></select></div>
+    <div class="field"><label><input type="checkbox" id="op-pointee" style="width:auto"> Opération pointée (rapprochée avec la banque)</label></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modal-op')">Annuler</button>
+      <button class="btn" id="btn-save-op">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal membre (fiche complète) -->
+<div class="modal-bg" id="modal-mb">
+  <div class="modal large">
+    <button class="close-x" onclick="closeModal('modal-mb')">✕</button>
+    <h3 id="modal-mb-title">Adhérent</h3>
+    <input type="hidden" id="mb-id">
+
+    <div class="field-row">
+      <div class="field"><label>Nom</label><input type="text" id="mb-nom"></div>
+      <div class="field"><label>Statut</label>
+        <select id="mb-statut"><option value="Permanent">Permanent (Adhérent)</option><option value="Affilié">Affilié</option></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Solde reporté N-1 (négatif = dette, positif = crédit)</label><input type="number" step="0.01" id="mb-report"></div>
+      <div class="field"><label>Cotisation forcée (€, laisser vide pour utiliser le montant par statut)</label><input type="number" step="0.01" id="mb-override"></div>
+    </div>
+    <div id="mb-recap" class="small" style="background:#f7f8fa; border-radius:8px; padding:10px 12px; margin-bottom:6px;"></div>
+
+    <h3>Achats / forfaits</h3>
+    <div id="mb-achats-list"></div>
+    <div class="toolbar" id="mb-achats-toolbar">
+      <select id="mb-new-achat-forfait" style="flex:1"></select>
+      <input type="text" id="mb-new-achat-nom" placeholder="Nom (si Autre)" style="display:none; width:150px">
+      <input type="number" step="0.01" id="mb-new-achat-montant" placeholder="Montant €" style="width:100px">
+      <button class="btn small" id="btn-add-achat">+ Ajouter</button>
+    </div>
+
+    <h3>Mensualisation</h3>
+    <div class="field-row" style="align-items:center">
+      <div class="field" style="flex:none"><label>Mensualiser</label>
+        <div class="pill-toggle" id="mb-mensualise-toggle">
+          <button type="button" data-val="0" class="active">Non</button>
+          <button type="button" data-val="1">Oui</button>
+        </div>
+      </div>
+      <div class="field"><label>Montant mensuel (€)</label><input type="number" step="0.01" id="mb-mensualite"></div>
+    </div>
+    <div class="month-grid" id="mb-echeancier"></div>
+
+    <h3>Historique des versements</h3>
+    <table>
+      <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th style="text-align:right">Montant</th></tr></thead>
+      <tbody id="mb-versements"></tbody>
+    </table>
+
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modal-mb')">Fermer</button>
+      <button class="btn" id="btn-save-mb">Enregistrer la fiche</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal relevé -->
+<div class="modal-bg" id="modal-releve">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('modal-releve')">✕</button>
+    <h3>Nouveau relevé</h3>
+    <input type="hidden" id="rl-id">
+    <div class="field"><label>Compte</label>
+      <select id="rl-compte"><option value="C.Courant">Compte Courant</option><option value="C.Hospit">Compte Hospitalier</option><option value="Epargne">Épargne</option></select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Date début</label><input type="date" id="rl-debut"></div>
+      <div class="field"><label>Date fin</label><input type="date" id="rl-fin"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Solde début (€)</label><input type="number" step="0.01" id="rl-solde-debut"></div>
+      <div class="field"><label>Solde fin — relevé (€)</label><input type="number" step="0.01" id="rl-solde-fin"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modal-releve')">Annuler</button>
+      <button class="btn" id="btn-save-releve">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
