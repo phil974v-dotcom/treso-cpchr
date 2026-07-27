@@ -233,7 +233,7 @@ function renderDashboard(){
         {label:'Recettes', data:top.map(x=>x.pos), backgroundColor:'#2f6f4f'},
         {label:'Dépenses', data:top.map(x=>Math.abs(x.neg)), backgroundColor:'#b5423a'},
       ]},
-      options:{ responsive:true, plugins:{legend:{position:'bottom'}}, scales:{x:{ticks:{autoSkip:false, maxRotation:60, minRotation:30}}} }
+      options:{ responsive:true, devicePixelRatio:2, plugins:{legend:{position:'bottom'}}, scales:{x:{ticks:{autoSkip:false, maxRotation:60, minRotation:30}}} }
     });
 
     const enRegle = state.membres.filter(m=>totalVerse(m) >= totalDu(m)).length;
@@ -242,7 +242,7 @@ function renderDashboard(){
     chartCotis = new Chart(document.getElementById('chart-cotis'), {
       type:'doughnut',
       data:{ labels:['À jour','En attente'], datasets:[{ data:[enRegle, enRetard], backgroundColor:['#2f6f4f','#b5423a'] }]},
-      options:{ responsive:true, plugins:{legend:{position:'bottom'}} }
+      options:{ responsive:true, devicePixelRatio:2, plugins:{legend:{position:'bottom'}} }
     });
   }
 }
