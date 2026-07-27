@@ -3,105 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trésorerie CPCHR — SaaS (starter)</title>
+<title>Trésorerie CPCHR — SaaS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="config.js"></script>
 <style>
   :root{
     --bg:#f4f5f7; --card:#ffffff; --ink:#1f2430; --muted:#68707e;
-    --line:#e4e6eb; --accent:#2f6f4f; --red:#b5423a;
+    --line:#e4e6eb; --accent:#2f6f4f; --accent-light:#e8f3ec;
+    --red:#b5423a; --red-light:#fbebe9; --blue:#2f5f8f; --amber:#a9761c;
     --radius:10px;
   }
   *{box-sizing:border-box;}
-  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink);}
-  header{background:#1f2937; color:#fff; padding:16px 24px; display:flex; align-items:center; justify-content:space-between;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+  }
+  header{
+    background:#1f2937; color:#fff; padding:16px 24px; display:flex; align-items:center; justify-content:space-between;
+  }
   header h1{font-size:18px; margin:0; font-weight:600;}
   header .sub{font-size:12.5px; color:#a7b0bf;}
-  main{padding:22px; max-width:1000px; margin:0 auto;}
-  .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; margin-bottom:18px;}
+  .role-badge{background:#e8f3ec; color:#2f6f4f; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600;}
+  nav{
+    display:flex; gap:4px; background:#fff; border-bottom:1px solid var(--line);
+    padding:0 20px; position:sticky; top:0; z-index:10; overflow-x:auto;
+  }
+  nav button{
+    border:none; background:none; padding:14px 16px; font-size:14px; cursor:pointer; color:var(--muted);
+    border-bottom:2px solid transparent; font-weight:500; white-space:nowrap;
+  }
+  nav button.active{color:var(--accent); border-bottom-color:var(--accent);}
+  main{padding:22px; max-width:1220px; margin:0 auto;}
+  .view{display:none;} .view.active{display:block;}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:20px;}
   .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px;}
   .card .label{font-size:12.5px; color:var(--muted); margin-bottom:6px;}
   .card .value{font-size:21px; font-weight:700;}
+  .card .value.pos{color:var(--accent);} .card .value.neg{color:var(--red);}
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; margin-bottom:18px;}
+  .panel h2{font-size:15px; margin:0 0 14px 0;}
+  .panel h3{font-size:13.5px; margin:18px 0 8px 0; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
+  .grid2{display:grid; grid-template-columns:1.3fr 1fr; gap:18px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+  @media (max-width:860px){ .grid2{grid-template-columns:1fr;} .grid3{grid-template-columns:1fr;} }
   table{width:100%; border-collapse:collapse; font-size:13.5px;}
-  th{text-align:left; font-size:11px; text-transform:uppercase; color:var(--muted); padding:8px 10px; border-bottom:1px solid var(--line);}
+  th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); padding:8px 10px; border-bottom:1px solid var(--line);}
   td{padding:9px 10px; border-bottom:1px solid #eef0f3;}
+  tr:hover td{background:#fafbfc;}
   .amt-pos{color:var(--accent); font-weight:600;} .amt-neg{color:var(--red); font-weight:600;}
-  input, select{padding:8px 10px; border:1px solid var(--line); border-radius:7px; font-size:13.5px;}
-  button.btn{padding:8px 14px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:13.5px; font-weight:600; cursor:pointer;}
-  button.btn.secondary{background:#fff; color:var(--ink); border-color:var(--line);}
-  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;}
-  #login-screen{max-width:380px; margin:80px auto;}
-  .small{font-size:12px; color:var(--muted);}
   .tag{display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600; background:#eef0f3; color:#54596b;}
-  .role-badge{background:#e8f3ec; color:#2f6f4f; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600;}
-</style>
-</head>
-<body>
-
-<div id="login-screen" class="panel">
-  <h2 style="margin-top:0">💠 Trésorerie CPCHR</h2>
-  <p class="small">Connexion par lien magique (aucun mot de passe à retenir). Entrez votre email, vous recevrez un lien de connexion.</p>
-  <div class="toolbar">
-    <input type="email" id="login-email" placeholder="votre@email.com" style="flex:1">
-    <button class="btn" id="btn-login">Envoyer le lien</button>
-  </div>
-  <div id="login-msg" class="small"></div>
-</div>
-
-<div id="app" style="display:none">
-  <header>
-    <div>
-      <h1>💠 Trésorerie CPCHR</h1>
-      <div class="sub" id="user-info"></div>
-    </div>
-    <div>
-      <span class="role-badge" id="role-badge"></span>
-      <button class="btn secondary" id="btn-logout" style="margin-left:10px">Se déconnecter</button>
-    </div>
-  </header>
-
-  <main>
-    <div class="cards">
-      <div class="card"><div class="label">Solde Compte Courant</div><div class="value" id="kpi-courant">–</div></div>
-      <div class="card"><div class="label">Solde Compte Hospitalier</div><div class="value" id="kpi-hosp">–</div></div>
-      <div class="card"><div class="label">Solde Épargne</div><div class="value" id="kpi-epargne">–</div></div>
-    </div>
-
-    <div class="panel">
-      <div class="toolbar">
-        <h2 style="margin:0; flex:1">Opérations</h2>
-        <button class="btn" id="btn-new-op" style="display:none">+ Nouvelle opération</button>
-      </div>
-      <table>
-        <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th>Compte</th><th>Adhérent</th><th style="text-align:right">Montant</th></tr></thead>
-        <tbody id="tbody-ops"></tbody>
-      </table>
-    </div>
-
-    <div class="panel">
-      <h2>Adhérents</h2>
-      <table>
-        <thead><tr><th>Nom</th><th>Statut</th><th>Report N-1</th></tr></thead>
-        <tbody id="tbody-membres"></tbody>
-      </table>
-    </div>
-
-    <div class="panel" id="new-op-panel" style="display:none">
-      <h2>Nouvelle opération</h2>
-      <div class="toolbar">
-        <input type="date" id="op-date">
-        <input type="text" id="op-libelle" placeholder="Libellé" style="flex:1">
-        <input type="number" step="0.01" id="op-montant" placeholder="Montant (- si dépense)" style="width:160px">
-        <select id="op-compte"><option value="C.Courant">Compte Courant</option><option value="C.Hospit">Compte Hospitalier</option><option value="Epargne">Épargne</option></select>
-        <select id="op-categorie"></select>
-        <select id="op-membre"><option value="">—</option></select>
-        <button class="btn" id="btn-save-op">Enregistrer</button>
-      </div>
-    </div>
-  </main>
-</div>
-
-<script src="app.js"></script>
-</body>
-</html>
+  .tag-compte{background:#e9eef7; color:#2f5f8f;}
+  .tag-statut-Permanent{background:#e8f3ec; color:#2f6f4f;}
+  .tag-statut-Affilie{background:#f6ecd8; color:#a9761c;}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;}
+  input,select,textarea{
+    padding:8px 10px; border:1px solid var(--line); border-radius:7px; font-size:13.5px; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  button.btn{
+    padding:8px 14px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:#fff;
+    font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  button.btn.secondary{background:#fff; color:var(--ink); border-color:var(--line);}
+  button.btn.danger{background:#fff; color:var(--red); border-color:#eecfcb;}
+  button.btn.small{padding:5px 10px; font-size:12.5px;}
+  button.btn:hover{opacity:.88;}
+  button.btn:disabled{opacity:.45; cursor:not-allowed;}
+  .search{flex:1; min-width:160px;}
+  .badge-ok{color:var(--accent); font-weight:600;}
+  .badge-warn{color:var(--red); font-weight:600;}
+  .link{color:var(--blue); cursor:pointer; font-weight:600; text-decoration:none;}
+  .link:hover{text-decoration:underline;}
+  .modal-bg{
+    display:none; position:fixed; inset:0; background:rgba(20,22,28,.45); align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-bg.open{display:flex;}
+  .modal{background:#fff; border-radius:12px; padding:22px; width:440px; max-width:94vw; max-height:90vh; overflow:auto; position:relative;}
+  .modal.large{width:720px;}
+  .modal h3{margin-top:0; font-size:16px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:4px;}
