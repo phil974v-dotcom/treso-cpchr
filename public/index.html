@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -91,7 +91,6 @@
   .bar{height:7px; background:#eceef1; border-radius:6px; overflow:hidden; margin-top:5px;}
   .bar > div{height:100%; background:var(--accent);}
   .bar.warn > div{background:var(--red);}
-  .bar.over > div{background:var(--blue);}
   footer{text-align:center; padding:30px 10px; color:var(--muted); font-size:12px;}
   .actions-col{white-space:nowrap;}
   .icon-btn{background:none; border:none; cursor:pointer; color:var(--muted); font-size:13px; padding:2px 6px;}
@@ -111,18 +110,20 @@
   .checkbox-cell{text-align:center;}
   #login-screen{max-width:400px; margin:80px auto;}
   #exercice-select{padding:6px 10px; border-radius:7px; border:1px solid #3a4356; background:#2b3444; color:#fff; font-weight:600;}
-#app{max-width:1440px;margin:0 auto;}#login-screen{max-width:420px;margin:80px auto;}</style>
+</style>
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="login-screen" class="panel">
   <h2 style="margin-top:0">💠 Trésorerie CPCHR</h2>
-  <p class="small">Connexion par lien magique (aucun mot de passe à retenir). Entrez votre email, vous recevrez un lien de connexion.</p>
+  <p class="small">Connexion par code (aucun mot de passe à retenir). Entrez votre email, vous recevrez un code à 6 chiffres.</p>
   <div class="toolbar">
     <input type="email" id="login-email" placeholder="votre@email.com" style="flex:1">
-    <button class="btn" id="btn-login">Envoyer le lien</button>
+    <button class="btn" id="btn-login">Envoyer le code</button>
   </div>
+  <input type="text" id="login-code" placeholder="Code reçu par email" style="display:none; width:100%; margin-top:8px; padding:8px; border-radius:7px; border:1px solid #3a4356;">
+  <button class="btn" id="btn-verify-code" style="display:none; margin-top:8px;">Vérifier le code</button>
   <div id="login-msg" class="small"></div>
 </div>
 

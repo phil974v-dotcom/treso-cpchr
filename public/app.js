@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // Trésorerie CPCHR — SaaS (Supabase)
 // Toutes les données sont partagées et sécurisées par rôle (RLS côté base).
 // Gestion multi-exercices : chaque adhérent, opération, échéance, achat et
@@ -31,8 +31,24 @@ document.getElementById('btn-login').addEventListener('click', async () => {
   const msg = document.getElementById('login-msg');
   if (!email) { msg.textContent = 'Merci de renseigner votre email.'; return; }
   msg.textContent = 'Envoi en cours...';
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
-  msg.textContent = error ? ('Erreur : ' + error.message) : 'Lien envoyé ! Vérifiez votre boîte mail (et vos spams).';
+  const { error } = await sb.auth.signInWithOtp({ email });
+  if (error) {
+    msg.textContent = 'Erreur : ' + error.message;
+  } else {
+    msg.textContent = 'Code envoyé ! Vérifiez votre boîte mail (et vos spams), puis entrez le code ci-dessous.';
+    document.getElementById('login-code').style.display = 'block';
+    document.getElementById('btn-verify-code').style.display = 'inline-block';
+  }
+});
+
+document.getElementById('btn-verify-code').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const code = document.getElementById('login-code').value.trim();
+  const msg = document.getElementById('login-msg');
+  if (!code) { msg.textContent = 'Merci de saisir le code reçu par email.'; return; }
+  msg.textContent = 'Vérification...';
+  const { error } = await sb.auth.verifyOtp({ email, token: code, type: 'email' });
+  if (error) { msg.textContent = 'Erreur : ' + error.message; }
 });
 
 document.getElementById('btn-logout').addEventListener('click', async () => {
@@ -233,7 +249,7 @@ function renderDashboard(){
         {label:'Recettes', data:top.map(x=>x.pos), backgroundColor:'#2f6f4f'},
         {label:'Dépenses', data:top.map(x=>Math.abs(x.neg)), backgroundColor:'#b5423a'},
       ]},
-      options:{ responsive:true, devicePixelRatio:2, plugins:{legend:{position:'bottom'}}, scales:{x:{ticks:{autoSkip:false, maxRotation:60, minRotation:30}}} }
+      options:{ responsive:true, plugins:{legend:{position:'bottom'}}, scales:{x:{ticks:{autoSkip:false, maxRotation:60, minRotation:30}}} }
     });
 
     const enRegle = state.membres.filter(m=>totalVerse(m) >= totalDu(m)).length;
@@ -242,7 +258,7 @@ function renderDashboard(){
     chartCotis = new Chart(document.getElementById('chart-cotis'), {
       type:'doughnut',
       data:{ labels:['À jour','En attente'], datasets:[{ data:[enRegle, enRetard], backgroundColor:['#2f6f4f','#b5423a'] }]},
-      options:{ responsive:true, devicePixelRatio:2, plugins:{legend:{position:'bottom'}} }
+      options:{ responsive:true, plugins:{legend:{position:'bottom'}} }
     });
   }
 }
