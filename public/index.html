@@ -192,9 +192,11 @@
       <div class="toolbar">
         <input type="text" class="search" id="op-search" placeholder="Rechercher un libellé...">
         <select id="op-filter-cat"><option value="">Toutes catégories</option></select>
-        <select id="op-filter-compte"><option value="">Tous les comptes</option></select>
+        <select id="op-filter-compte"><option value="">Tous les comptes</option><option value="C.Courant">Compte Courant</option><option value="C.Hospit">Compte Hospitalier</option><option value="Epargne">Épargne</option></select>
         <select id="op-filter-membre"><option value="">Tous les adhérents</option></select>
         <button class="btn" id="btn-new-op">+ Nouvelle opération</button>
+        <button class="btn secondary" id="btn-new-transfert">⇄ Transfert entre comptes</button>
+        <button class="btn secondary" id="btn-new-cheques">🖊 Paiement en plusieurs chèques</button>
       </div>
       <table>
         <thead><tr>
@@ -427,6 +429,52 @@
     <div class="modal-actions">
       <button class="btn secondary" onclick="closeModal('modal-releve')">Annuler</button>
       <button class="btn" id="btn-save-releve">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal transfert entre comptes -->
+<div class="modal-bg" id="modal-transfert">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('modal-transfert')">✕</button>
+    <h3>Transfert entre comptes</h3>
+    <div class="field"><label>Date</label><input type="date" id="tr-date"></div>
+    <div class="field-row">
+      <div class="field"><label>Compte source (débit)</label>
+        <select id="tr-source"><option value="C.Courant">Compte Courant</option><option value="C.Hospit">Compte Hospitalier</option><option value="Epargne">Épargne</option></select>
+      </div>
+      <div class="field"><label>Compte destination (crédit)</label>
+        <select id="tr-dest"><option value="C.Hospit">Compte Hospitalier</option><option value="C.Courant">Compte Courant</option><option value="Epargne">Épargne</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Montant (€)</label><input type="number" step="0.01" id="tr-montant"></div>
+    <div class="field"><label>Libellé</label><input type="text" id="tr-libelle" placeholder="Ex : Virement interne"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modal-transfert')">Annuler</button>
+      <button class="btn" id="btn-save-transfert">Enregistrer le transfert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal paiement en plusieurs chèques -->
+<div class="modal-bg" id="modal-cheques">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('modal-cheques')">✕</button>
+    <h3>Paiement en plusieurs chèques</h3>
+    <div class="field-row">
+      <div class="field"><label>Compte</label>
+        <select id="ch-compte"><option value="C.Courant">Compte Courant</option><option value="C.Hospit">Compte Hospitalier</option><option value="Epargne">Épargne</option></select>
+      </div>
+      <div class="field"><label>Catégorie</label><select id="ch-categorie"></select></div>
+    </div>
+    <div class="field"><label>Adhérent associé (optionnel)</label><select id="ch-membre"><option value="">—</option></select></div>
+    <div class="field"><label>Libellé de base</label><input type="text" id="ch-libelle" placeholder="Ex : Cotisation — MARTIN Paul"></div>
+    <h3>Chèques (date de dépôt + montant de chacun)</h3>
+    <div id="ch-list"></div>
+    <button type="button" class="btn small secondary" id="btn-add-cheque-row" style="margin-top:6px">+ Ajouter un chèque</button>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modal-cheques')">Annuler</button>
+      <button class="btn" id="btn-save-cheques">Enregistrer les chèques</button>
     </div>
   </div>
 </div>

@@ -226,7 +226,7 @@ function renderDashboard(){
   const recent = [...state.operations].sort((a,b)=> (b.date||'').localeCompare(a.date||'')).slice(0,8);
   document.getElementById('tbody-recent').innerHTML = recent.map(o=>`
     <tr>
-      <td>${o.date||''}</td>
+      <td>${formatDateFr(o.date)}</td>
       <td>${o.libelle}</td>
       <td><span class="tag">${o.categorie||''}</span></td>
       <td><span class="tag tag-compte">${compteLabel(o.compte)}</span></td>
@@ -285,7 +285,7 @@ function renderOperations(){
   document.getElementById('ops-empty').style.display = ops.length?'none':'block';
   document.getElementById('tbody-ops').innerHTML = ops.map(o=>`
     <tr>
-      <td>${o.date||''}</td>
+      <td>${formatDateFr(o.date)}</td>
       <td>${o.libelle}</td>
       <td><span class="tag">${o.categorie||''}</span></td>
       <td><span class="tag tag-compte">${compteLabel(o.compte)}</span></td>
@@ -293,7 +293,7 @@ function renderOperations(){
       <td style="text-align:right" class="${o.montant>=0?'amt-pos':'amt-neg'}">${fmt(o.montant)}</td>
       <td class="checkbox-cell"><input type="checkbox" ${o.pointee?'checked':''} ${canWrite?'':'disabled'} onchange="togglePointee(${o.id})"></td>
       <td class="actions-col">
-        ${canWrite ? `<button class="icon-btn" onclick="editOp(${o.id})">✎</button><button class="icon-btn" onclick="deleteOp(${o.id})">🗑</button>` : ''}
+        ${canWrite ? `<button class="icon-btn" onclick="duplicateOp(${o.id})" title="Dupliquer">⧉</button><button class="icon-btn" onclick="editOp(${o.id})">✎</button><button class="icon-btn" onclick="deleteOp(${o.id})">🗑</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -363,6 +363,29 @@ window.deleteOp = async function(id){
   await refresh();
 };
 
+window.duplicateOp = function(id){
+  if(!canWrite) return;
+  const o = state.operations.find(x=>x.id===id);
+  if(!o) return;
+  document.getElementById('modal-op-title').textContent = "Dupliquer l'opération";
+  document.getElementById('op-id').value = '';
+  document.getElementById('op-echeance-membre').value = '';
+  document.getElementById('op-echeance-mois').value = '';
+  document.getElementById('op-date').value = o.date || new Date().toISOString().slice(0,10);
+  document.getElementById('op-libelle').value = o.libelle;
+  document.getElementById('op-montant').value = o.montant;
+  document.getElementById('op-compte').value = o.compte || 'C.Courant';
+  document.getElementById('op-pointee').checked = false;
+  populateOpModalSelects();
+  if(o.categorie && ![...document.getElementById('op-categorie').options].some(opt=>opt.value===o.categorie)){
+    const opt = document.createElement('option'); opt.value = o.categorie; opt.textContent = o.categorie;
+    document.getElementById('op-categorie').appendChild(opt);
+  }
+  document.getElementById('op-categorie').value = o.categorie || '';
+  document.getElementById('op-membre').value = o.membre_id||'';
+  openModal('modal-op');
+};
+
 document.getElementById('btn-save-op').addEventListener('click', async ()=>{
   if(!canWrite) return;
   const idVal = document.getElementById('op-id').value;
@@ -397,6 +420,90 @@ document.getElementById('btn-save-op').addEventListener('click', async ()=>{
   closeModal('modal-op');
   await refresh();
   if(echMembre) openMemberDetail(echMembre);
+});
+
+/* ====================== TRANSFERT ENTRE COMPTES ====================== */
+document.getElementById('btn-new-transfert').addEventListener('click', ()=>{
+  if(!canWrite) return;
+  document.getElementById('tr-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('tr-source').value = 'C.Courant';
+  document.getElementById('tr-dest').value = 'C.Hospit';
+  document.getElementById('tr-montant').value = '';
+  document.getElementById('tr-libelle').value = '';
+  openModal('modal-transfert');
+});
+function transfertCategorie(source, dest){
+  const map = {
+    'C.Courant>C.Hospit': '0-3-TRANSFERT Cpte Courant>Cpte Hosp.',
+    'C.Hospit>C.Courant': '0-4-TRANSFERT Cpte Hosp>Cpte Courant',
+  };
+  return map[source+'>'+dest] || null;
+}
+document.getElementById('btn-save-transfert').addEventListener('click', async ()=>{
+  if(!canWrite) return;
+  const date = document.getElementById('tr-date').value || null;
+  const source = document.getElementById('tr-source').value;
+  const dest = document.getElementById('tr-dest').value;
+  const montant = parseFloat(document.getElementById('tr-montant').value);
+  const libelle = document.getElementById('tr-libelle').value.trim() || 'Transfert entre comptes';
+  if(source === dest){ alert('Choisissez deux comptes différents.'); return; }
+  if(isNaN(montant) || montant <= 0){ alert('Merci de renseigner un montant positif.'); return; }
+  const categorie = transfertCategorie(source, dest);
+  const rows = [
+    { date, libelle, montant: -Math.abs(montant), compte: source, categorie, membre_id: null, pointee: false, exercice: state.currentExercice },
+    { date, libelle, montant: Math.abs(montant), compte: dest, categorie, membre_id: null, pointee: false, exercice: state.currentExercice },
+  ];
+  const { error } = await sb.from('operations').insert(rows);
+  if(error){ alert('Erreur : '+error.message); return; }
+  closeModal('modal-transfert');
+  await refresh();
+});
+
+/* ====================== PAIEMENT EN PLUSIEURS CHEQUES ====================== */
+function chequeRowHtml(){
+  return `<div class="mini-row cheque-row">
+    <input type="date" class="ch-date" style="flex:1">
+    <input type="number" step="0.01" class="ch-montant" placeholder="Montant €" style="width:110px">
+    <button type="button" class="icon-btn" onclick="this.closest('.cheque-row').remove()">🗑</button>
+  </div>`;
+}
+document.getElementById('btn-new-cheques').addEventListener('click', ()=>{
+  if(!canWrite) return;
+  document.getElementById('ch-libelle').value = '';
+  document.getElementById('ch-compte').value = 'C.Courant';
+  document.getElementById('ch-categorie').innerHTML = state.categories.map(c=>`<option value="${escAttr(c)}">${c}</option>`).join('');
+  document.getElementById('ch-membre').innerHTML = '<option value="">—</option>' + state.membres.map(m=>`<option value="${escAttr(m.id)}">${m.nom}</option>`).join('');
+  document.getElementById('ch-list').innerHTML = chequeRowHtml() + chequeRowHtml();
+  openModal('modal-cheques');
+});
+document.getElementById('btn-add-cheque-row').addEventListener('click', ()=>{
+  document.getElementById('ch-list').insertAdjacentHTML('beforeend', chequeRowHtml());
+});
+document.getElementById('btn-save-cheques').addEventListener('click', async ()=>{
+  if(!canWrite) return;
+  const libelleBase = document.getElementById('ch-libelle').value.trim();
+  if(!libelleBase){ alert('Merci de renseigner un libellé.'); return; }
+  const compte = document.getElementById('ch-compte').value;
+  const categorie = document.getElementById('ch-categorie').value || null;
+  const membre_id = document.getElementById('ch-membre').value || null;
+  const rows = [...document.querySelectorAll('#ch-list .cheque-row')].map(row=>({
+    date: row.querySelector('.ch-date').value || null,
+    montant: parseFloat(row.querySelector('.ch-montant').value),
+  })).filter(r=>!isNaN(r.montant) && r.montant!==0);
+  if(rows.length < 1){ alert('Merci de renseigner au moins un chèque avec un montant.'); return; }
+  const total = rows.length;
+  const payload = rows.map((r,i)=>({
+    date: r.date,
+    libelle: total>1 ? `${libelleBase} — Chèque ${i+1}/${total}` : libelleBase,
+    montant: r.montant,
+    compte, categorie, membre_id,
+    pointee: false,
+    exercice: state.currentExercice,
+  }));
+  const { error } = await sb.from('operations').insert(payload);
+  if(error){ alert('Erreur : '+error.message); return; }
+  closeModal('modal-cheques');
+  await refresh();
 });
 
 /* ====================== MEMBRES ====================== */
@@ -617,7 +724,7 @@ function renderEcheancier(m){
     <div class="month-cell ${e.valide?'valide':''}">
       <div class="m-label">${MOIS_LABELS[e.mois-1]} — ${fmt(m.mensualite||0)}</div>
       ${e.valide
-        ? `<div class="small">✓ Payé le ${e.date||''}</div>`
+        ? `<div class="small">✓ Payé le ${e.date||''}${canWrite ? ` — <span class="link" onclick="devaliderEcheance('${escAttr(m.id)}',${e.mois})">Annuler</span>` : ''}</div>`
         : (canWrite ? `<button class="btn small secondary" onclick="validerEcheance('${escAttr(m.id)}',${e.mois})">Valider le paiement</button>` : '<div class="small">En attente</div>')}
     </div>`).join('');
 }
@@ -632,19 +739,30 @@ window.validerEcheance = function(memberId, mois){
   document.getElementById('op-compte').value = 'C.Courant';
   document.getElementById('op-pointee').checked = false;
   populateOpModalSelects();
-  const catGuess = state.categories.find(c=>/cotisation/i.test(c)) || state.categories[0];
-  if(catGuess) document.getElementById('op-categorie').value = catGuess;
+  const catCotis = state.categories.includes('1-2- Cotisations Membres (N)')
+    ? '1-2- Cotisations Membres (N)'
+    : (state.categories.find(c=>/cotisation/i.test(c)) || state.categories[0]);
+  if(catCotis) document.getElementById('op-categorie').value = catCotis;
   document.getElementById('op-membre').value = m.id;
   document.getElementById('op-echeance-membre').value = memberId;
   document.getElementById('op-echeance-mois').value = mois;
   openModal('modal-op');
+};
+window.devaliderEcheance = async function(memberId, mois){
+  if(!canWrite) return;
+  if(!confirm("Annuler la validation de cette échéance ?\n\nL'opération éventuellement créée lors de la validation ne sera pas supprimée automatiquement — retirez-la dans l'onglet Opérations si besoin.")) return;
+  const { error } = await sb.from('echeances').update({ valide:false, date_paiement:null, montant:null })
+    .eq('membre_id', memberId).eq('exercice', state.currentExercice).eq('mois', mois);
+  if(error){ alert('Erreur : '+error.message); return; }
+  await loadAll();
+  renderEcheancier(getMember(memberId));
 };
 
 function renderMemberVersements(m){
   const ops = state.operations.filter(o=>o.membre_id===m.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   document.getElementById('mb-versements').innerHTML = ops.map(o=>`
     <tr>
-      <td>${o.date||''}</td><td>${o.libelle}</td><td><span class="tag">${o.categorie||''}</span></td>
+      <td>${formatDateFr(o.date)}</td><td>${o.libelle}</td><td><span class="tag">${o.categorie||''}</span></td>
       <td style="text-align:right" class="${o.montant>=0?'amt-pos':'amt-neg'}">${fmt(o.montant)}</td>
     </tr>`).join('') || '<tr><td colspan="4" class="empty">Aucun versement enregistré</td></tr>';
 }
@@ -691,15 +809,24 @@ function renderReleves(){
   document.getElementById('btn-new-releve').style.display = canWrite ? 'inline-block' : 'none';
 }
 
+function suggestSoldeDebut(compte){
+  const candidates = state.releves.filter(r=>r.compte===compte && r.solde_fin!=null);
+  candidates.sort((a,b)=>(b.date_fin||'').localeCompare(a.date_fin||''));
+  return candidates.length ? candidates[0].solde_fin : '';
+}
 document.getElementById('btn-new-releve').addEventListener('click', ()=>{
   if(!canWrite) return;
   document.getElementById('rl-id').value = '';
   document.getElementById('rl-compte').value = 'C.Courant';
   document.getElementById('rl-debut').value = '';
   document.getElementById('rl-fin').value = '';
-  document.getElementById('rl-solde-debut').value = '';
+  document.getElementById('rl-solde-debut').value = suggestSoldeDebut('C.Courant');
   document.getElementById('rl-solde-fin').value = '';
   openModal('modal-releve');
+});
+document.getElementById('rl-compte').addEventListener('change', e=>{
+  if(document.getElementById('rl-id').value) return;
+  document.getElementById('rl-solde-debut').value = suggestSoldeDebut(e.target.value);
 });
 window.editReleve = function(id){
   if(!canWrite) return;
