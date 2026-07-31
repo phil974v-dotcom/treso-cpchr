@@ -293,7 +293,9 @@ function renderOperations(){
       <td><span class="tag tag-compte">${compteLabel(o.compte)}</span></td>
       <td>${o.membre_id ? `<span class="link" onclick="openMemberDetail('${escAttr(o.membre_id)}')">${memberName(o.membre_id)}</span>` : '—'}</td>
       <td style="text-align:right" class="${o.montant>=0?'amt-pos':'amt-neg'}">${fmt(o.montant)}</td>
-      <td class="checkbox-cell"><input type="checkbox" ${o.pointee?'checked':''} ${canWrite?'':'disabled'} onchange="togglePointee(${o.id})"></td>
+      <td class="checkbox-cell">${releveIsLocked(o.compte, o.date)
+        ? `<input type="checkbox" checked disabled title="Rapprochement validé — annulez-le dans l'onglet Relevés pour modifier">`
+        : `<input type="checkbox" ${o.pointee?'checked':''} ${canWrite?'':'disabled'} onchange="togglePointee(${o.id})">`}</td>
       <td class="actions-col">
         ${canWrite ? `<button class="icon-btn" onclick="duplicateOp(${o.id})" title="Dupliquer">⧉</button><button class="icon-btn" onclick="editOp(${o.id})">✎</button><button class="icon-btn" onclick="deleteOp(${o.id})">🗑</button>` : ''}
       </td>
@@ -308,6 +310,7 @@ window.togglePointee = async function(id){
   if(!canWrite) return;
   const o = state.operations.find(x=>x.id===id);
   if(!o) return;
+  if(releveIsLocked(o.compte, o.date)){ alert("Cette opération appartient à un relevé déjà rapproché. Annulez le rapprochement dans l'onglet Relevés pour la modifier."); await refresh(); return; }
   const { error } = await sb.from('operations').update({ pointee: !o.pointee }).eq('id', id);
   if(error){ alert('Erreur : '+error.message); return; }
   await refresh();
@@ -787,6 +790,11 @@ document.getElementById('btn-save-mb').addEventListener('click', async ()=>{
 });
 
 /* ====================== RELEVES ====================== */
+function releveIsLocked(compte, date){
+  return state.releves.some(r=> r.compte===compte && r.valide &&
+    (!r.date_debut || (date||'') >= r.date_debut) && (!r.date_fin || (date||'') <= r.date_fin));
+}
+
 function renderReleves(){
   const list = [...state.releves].sort((a,b)=>(a.compte||'').localeCompare(b.compte||'') || (a.date_debut||'').localeCompare(b.date_debut||''));
   document.getElementById('tbody-releves').innerHTML = list.map(r=>{
@@ -795,6 +803,14 @@ function renderReleves(){
     ).reduce((s,o)=>s+o.montant,0);
     const calcule = (r.solde_debut||0) + mvts;
     const ecart = r.solde_fin != null ? (r.solde_fin - calcule) : null;
+    let rapprochementCell;
+    if(r.valide){
+      rapprochementCell = `<span class="badge-ok">✓ Rapproché</span>${canWrite ? ` — <span class="link" onclick="annulerRapprochement(${r.id})">Annuler</span>` : ''}`;
+    } else if(canWrite && r.solde_fin != null){
+      rapprochementCell = `<button class="btn small secondary" onclick="validerRapprochement(${r.id})">Valider le rapprochement</button>`;
+    } else {
+      rapprochementCell = '<span class="small">—</span>';
+    }
     return `
     <tr>
       <td><span class="tag tag-compte">${compteLabel(r.compte)}</span></td>
@@ -803,13 +819,31 @@ function renderReleves(){
       <td>${r.solde_fin != null ? fmt(r.solde_fin) : '<span class="small">non renseigné</span>'}</td>
       <td>${fmt(calcule)}</td>
       <td>${ecart == null ? '—' : `<span class="${Math.abs(ecart)<0.01?'badge-ok':'badge-warn'}">${fmt(ecart)}</span>`}</td>
+      <td>${rapprochementCell}</td>
       <td class="actions-col">
-        ${canWrite ? `<button class="icon-btn" onclick="editReleve(${r.id})">✎</button><button class="icon-btn" onclick="deleteReleve(${r.id})">🗑</button>` : ''}
+        ${canWrite && !r.valide ? `<button class="icon-btn" onclick="editReleve(${r.id})">✎</button><button class="icon-btn" onclick="deleteReleve(${r.id})">🗑</button>` : ''}
       </td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" class="empty">Aucun relevé enregistré</td></tr>';
+  }).join('') || '<tr><td colspan="8" class="empty">Aucun relevé enregistré</td></tr>';
   document.getElementById('btn-new-releve').style.display = canWrite ? 'inline-block' : 'none';
 }
+
+window.validerRapprochement = async function(id){
+  if(!canWrite) return;
+  const r = state.releves.find(x=>x.id===id);
+  if(!r) return;
+  if(!confirm('Valider le rapprochement de ce relevé ?\n\nLes opérations pointées de cette période seront verrouillées : impossible de les dépointer ou de les pointer une seconde fois tant que le rapprochement n\'est pas annulé.')) return;
+  const { error } = await sb.from('releves').update({ valide: true }).eq('id', id);
+  if(error){ alert('Erreur : '+error.message); return; }
+  await refresh();
+};
+window.annulerRapprochement = async function(id){
+  if(!canWrite) return;
+  if(!confirm('Annuler ce rapprochement ? Les opérations de la période redeviendront modifiables.')) return;
+  const { error } = await sb.from('releves').update({ valide: false }).eq('id', id);
+  if(error){ alert('Erreur : '+error.message); return; }
+  await refresh();
+};
 
 function suggestSoldeDebut(compte){
   const candidates = state.releves.filter(r=>r.compte===compte && r.solde_fin!=null);
