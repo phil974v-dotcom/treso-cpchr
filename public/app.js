@@ -149,7 +149,7 @@ async function loadAll(){
 
   const categoryRows = categoriesRes.data || [];
 
-  state.parametres = parametresRes.data || { cotisation_permanent:400, cotisation_affilie:219.5 };
+  state.parametres = parametresRes.data || { cotisation_permanent:400, cotisation_affilie:219.5, solde_initial_courant:0, solde_initial_hosp:0, solde_initial_epargne:0 };
   state.forfaits = forfaitsRes.data || [];
   state.categories = categoryRows.map(c => c.label);
   state.categoryRows = categoryRows;
@@ -190,11 +190,13 @@ function computeTotals(){
   return {recettes, depenses, solde: recettes+depenses, byCat};
 }
 
+function soldeInitialKey(compte){
+  return compte==='C.Courant' ? 'solde_initial_courant' : compte==='C.Hospit' ? 'solde_initial_hosp' : 'solde_initial_epargne';
+}
 function soldeCompte(compte){
-  const releve = state.releves.find(r=>r.compte===compte);
-  const ouverture = releve ? releve.solde_debut : 0;
+  const ouverture = state.parametres[soldeInitialKey(compte)] || 0;
   const mouvements = state.operations.filter(o=>o.compte===compte).reduce((s,o)=>s+o.montant,0);
-  return (ouverture||0) + mouvements;
+  return ouverture + mouvements;
 }
 
 /* ====================== NAVIGATION ====================== */
@@ -875,6 +877,12 @@ function renderParametres(){
   ['param-cotis-permanent','param-cotis-affilie'].forEach(id=>{ document.getElementById(id).disabled = !canWrite; });
   document.getElementById('btn-save-params').style.display = canWrite ? 'inline-block' : 'none';
 
+  document.getElementById('param-solde-courant').value = state.parametres.solde_initial_courant || 0;
+  document.getElementById('param-solde-hosp').value = state.parametres.solde_initial_hosp || 0;
+  document.getElementById('param-solde-epargne').value = state.parametres.solde_initial_epargne || 0;
+  ['param-solde-courant','param-solde-hosp','param-solde-epargne'].forEach(id=>{ document.getElementById(id).disabled = !canWrite; });
+  document.getElementById('btn-save-soldes').style.display = canWrite ? 'inline-block' : 'none';
+
   document.getElementById('forfaits-list').innerHTML = state.forfaits.map(f=>`
     <div class="mini-row">
       <input type="text" value="${escAttr(f.nom)}" ${canWrite?'':'disabled'} onchange="updateForfait(${f.id},'nom',this.value)">
@@ -898,6 +906,18 @@ document.getElementById('btn-save-params').addEventListener('click', async ()=>{
   const payload = {
     cotisation_permanent: parseFloat(document.getElementById('param-cotis-permanent').value) || 0,
     cotisation_affilie: parseFloat(document.getElementById('param-cotis-affilie').value) || 0,
+  };
+  const { error } = await sb.from('parametres').update(payload).eq('exercice', state.currentExercice);
+  if(error){ alert('Erreur : '+error.message); return; }
+  await refresh();
+});
+
+document.getElementById('btn-save-soldes').addEventListener('click', async ()=>{
+  if(!canWrite) return;
+  const payload = {
+    solde_initial_courant: parseFloat(document.getElementById('param-solde-courant').value) || 0,
+    solde_initial_hosp: parseFloat(document.getElementById('param-solde-hosp').value) || 0,
+    solde_initial_epargne: parseFloat(document.getElementById('param-solde-epargne').value) || 0,
   };
   const { error } = await sb.from('parametres').update(payload).eq('exercice', state.currentExercice);
   if(error){ alert('Erreur : '+error.message); return; }
@@ -1201,6 +1221,9 @@ document.getElementById('btn-cloture-exercice').addEventListener('click', async 
     exercice: nextYear,
     cotisation_permanent: state.parametres.cotisation_permanent,
     cotisation_affilie: state.parametres.cotisation_affilie,
+    solde_initial_courant: soldeCompte('C.Courant'),
+    solde_initial_hosp: soldeCompte('C.Hospit'),
+    solde_initial_epargne: soldeCompte('Epargne'),
   }));
   if(error){ alert('Erreur lors de la création des paramètres '+nextYear+' : '+error.message); renderExerciceUI(); return; }
 

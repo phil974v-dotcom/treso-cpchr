@@ -273,6 +273,17 @@
     </div>
 
     <div class="panel">
+      <h2>Soldes de départ des comptes</h2>
+      <p class="small">Solde de chaque compte au 1er janvier de l'exercice en cours. Ce montant sert de base au calcul du solde affiché sur le tableau de bord (on y ajoute ensuite toutes les opérations enregistrées). Il est reporté automatiquement lors de la clôture d'exercice, mais reste modifiable ici à tout moment si besoin de le corriger.</p>
+      <div class="field-row">
+        <div class="field"><label>Compte Courant (€)</label><input type="number" step="0.01" id="param-solde-courant"></div>
+        <div class="field"><label>Compte Hospitalier (€)</label><input type="number" step="0.01" id="param-solde-hosp"></div>
+        <div class="field"><label>Épargne (€)</label><input type="number" step="0.01" id="param-solde-epargne"></div>
+      </div>
+      <button class="btn small" id="btn-save-soldes">Enregistrer</button>
+    </div>
+
+    <div class="panel">
       <h2>Catégories / postes comptables</h2>
       <p class="small">Liste utilisée pour catégoriser les opérations. Vous pouvez ajouter, renommer ou supprimer une catégorie.</p>
       <div id="categories-list" style="max-height:340px; overflow:auto"></div>
