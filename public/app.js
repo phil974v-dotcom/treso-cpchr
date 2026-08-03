@@ -82,7 +82,7 @@ async function boot() {
   document.getElementById('role-badge').textContent = profile ? roleLabel(profile.role) : 'rôle non défini';
 
   if(isHospitalier){
-    ['membres','releves','parametres','data'].forEach(v=>{
+    ['releves','parametres','data'].forEach(v=>{
       const btn = document.querySelector(`#nav button[data-view="${v}"]`);
       if(btn) btn.style.display = 'none';
     });
