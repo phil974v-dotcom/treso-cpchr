@@ -160,13 +160,13 @@
   <!-- DASHBOARD -->
   <div class="view active" id="view-dashboard">
     <div class="cards">
-      <div class="card"><div class="label">Solde Compte Courant</div><div class="value" id="kpi-solde-courant">–</div></div>
-      <div class="card"><div class="label">Solde Compte Hospitalier</div><div class="value" id="kpi-solde-hosp">–</div></div>
-      <div class="card"><div class="label">Solde Épargne</div><div class="value" id="kpi-solde-epargne">–</div></div>
-      <div class="card"><div class="label">Total dû restant (adhérents)</div><div class="value" id="kpi-restant">–</div></div>
+      <div class="card" id="card-solde-courant"><div class="label">Solde Compte Courant</div><div class="value" id="kpi-solde-courant">–</div></div>
+      <div class="card" id="card-solde-hosp"><div class="label">Solde Compte Hospitalier</div><div class="value" id="kpi-solde-hosp">–</div></div>
+      <div class="card" id="card-solde-epargne"><div class="label">Solde Épargne</div><div class="value" id="kpi-solde-epargne">–</div></div>
+      <div class="card" id="card-restant"><div class="label">Total dû restant (adhérents)</div><div class="value" id="kpi-restant">–</div></div>
     </div>
 
-    <div class="grid2">
+    <div class="grid2" id="panel-charts">
       <div class="panel">
         <h2>Recettes / dépenses par catégorie</h2>
         <canvas id="chart-cat" height="220"></canvas>

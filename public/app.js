@@ -17,6 +17,7 @@ function dateAddDays(iso, days){ const dt=new Date(iso+'T00:00:00'); dt.setDate(
 let currentProfile = null;
 let canWrite = false;   // tresorier ou tresorier_adjoint
 let isTresorier = false; // tresorier uniquement (gestion des profils/rôles)
+let isHospitalier = false; // visibilité restreinte au Compte Hospitalier
 let currentMemberId = null;
 const selectedMembers = new Set();
 
@@ -73,11 +74,21 @@ async function boot() {
   currentProfile = profile;
   canWrite = !!profile && ['tresorier', 'tresorier_adjoint'].includes(profile.role);
   isTresorier = !!profile && profile.role === 'tresorier';
+  isHospitalier = !!profile && profile.role === 'hospitalier';
 
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-info').textContent = session.user.email;
   document.getElementById('role-badge').textContent = profile ? roleLabel(profile.role) : 'rôle non défini';
+
+  if(isHospitalier){
+    ['membres','releves','parametres','data'].forEach(v=>{
+      const btn = document.querySelector(`#nav button[data-view="${v}"]`);
+      if(btn) btn.style.display = 'none';
+    });
+    const compteFilter = document.getElementById('op-filter-compte');
+    if(compteFilter){ compteFilter.value = 'C.Hospit'; compteFilter.disabled = true; }
+  }
 
   const years = await loadAvailableExercices();
   state.availableExercices = years.length ? years : [2026];
@@ -87,7 +98,7 @@ async function boot() {
 }
 
 function roleLabel(r) {
-  return { tresorier: 'Trésorier', tresorier_adjoint: 'Trésorier adjoint', bureau: 'Bureau (lecture seule)', membre: 'Accès personnel' }[r] || r;
+  return { tresorier: 'Trésorier', tresorier_adjoint: 'Trésorier adjoint', bureau: 'Bureau (lecture seule)', membre: 'Accès personnel', hospitalier: 'Hospitalier (Compte Hospitalier)' }[r] || r;
 }
 
 sb.auth.onAuthStateChange(() => { boot(); });
@@ -217,8 +228,26 @@ window.closeModal = closeModal;
 let chartCat, chartCotis;
 function renderDashboard(){
   const t = computeTotals();
-  document.getElementById('kpi-solde-courant').textContent = fmt(soldeCompte('C.Courant'));
   document.getElementById('kpi-solde-hosp').textContent = fmt(soldeCompte('C.Hospit'));
+
+  if(isHospitalier){
+    document.getElementById('solde-header').textContent = 'Exercice '+state.currentExercice+' — Solde Compte Hospitalier : ' + fmt(soldeCompte('C.Hospit'));
+    ['card-solde-courant','card-solde-epargne','card-restant','panel-charts'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.style.display = 'none';
+    });
+    document.getElementById('tbody-recent').innerHTML = [...state.operations].sort((a,b)=> (b.date||'').localeCompare(a.date||'')).slice(0,8).map(o=>`
+      <tr>
+        <td>${formatDateFr(o.date)}</td>
+        <td>${o.libelle}</td>
+        <td><span class="tag">${o.categorie||''}</span></td>
+        <td><span class="tag tag-compte">${compteLabel(o.compte)}</span></td>
+        <td style="text-align:right" class="${o.montant>=0?'amt-pos':'amt-neg'}">${fmt(o.montant)}</td>
+      </tr>`).join('') || '<tr><td colspan="5" class="empty">Aucune opération visible</td></tr>';
+    return;
+  }
+
+  document.getElementById('kpi-solde-courant').textContent = fmt(soldeCompte('C.Courant'));
   document.getElementById('kpi-solde-epargne').textContent = fmt(soldeCompte('Epargne'));
   document.getElementById('solde-header').textContent = 'Exercice '+state.currentExercice+' — Solde Compte Courant : ' + fmt(soldeCompte('C.Courant'));
 
@@ -294,7 +323,7 @@ function renderOperations(){
       <td>${o.membre_id ? `<span class="link" onclick="openMemberDetail('${escAttr(o.membre_id)}')">${memberName(o.membre_id)}</span>` : '—'}</td>
       <td style="text-align:right" class="${o.montant>=0?'amt-pos':'amt-neg'}">${fmt(o.montant)}</td>
       <td class="checkbox-cell">${releveIsLocked(o.compte, o.date)
-        ? `<input type="checkbox" checked disabled title="Rapprochement validé — annulez-le dans l'onglet Relevés pour modifier">`
+        ? `<input type="checkbox" ${o.pointee?'checked':''} disabled title="Rapprochement validé — annulez-le dans l'onglet Relevés pour modifier">`
         : `<input type="checkbox" ${o.pointee?'checked':''} ${canWrite?'':'disabled'} onchange="togglePointee(${o.id})">`}</td>
       <td class="actions-col">
         ${canWrite ? `<button class="icon-btn" onclick="duplicateOp(${o.id})" title="Dupliquer">⧉</button><button class="icon-btn" onclick="editOp(${o.id})">✎</button><button class="icon-btn" onclick="deleteOp(${o.id})">🗑</button>` : ''}
@@ -1016,7 +1045,7 @@ async function renderProfiles(){
   }
   const { data: profiles, error } = await sb.from('profiles').select('*').order('created_at');
   if(error){ tbody.innerHTML = `<tr><td colspan="4" class="small">Erreur : ${error.message}</td></tr>`; return; }
-  const roleOptions = ['tresorier','tresorier_adjoint','bureau','membre'];
+  const roleOptions = ['tresorier','tresorier_adjoint','bureau','membre','hospitalier'];
   tbody.innerHTML = (profiles||[]).map(p=>`
     <tr>
       <td>${escapeHtml(p.nom||'')}</td>
